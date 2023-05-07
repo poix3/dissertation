@@ -2,10 +2,12 @@ import os
 os.environ["DGLBACKEND"] = "pytorch"
 
 import dgl
+import json
 import torch
 import spacy
 import amrlib
 import penman
+import numpy as np
 import matplotlib.pyplot as plt
 from datasets import load_dataset
 from collections import Counter
@@ -17,8 +19,12 @@ MAX_LEN = 500
 NUM_LABELS = 10 # from ecthr dataset
 VOCAB_SIZE = 5000
 
+color_ref = {"train":"red", 
+             "validation":"blue", 
+             "test":"yellow"}
+
 nlp = spacy.load("en_core_web_lg")
-stog = amrlib.load_stog_model(batch_size = 32)
+stog = amrlib.load_stog_model(batch_size = 24)
 ecthr_dataset = load_dataset("coastalcph/fairlex", "ecthr")
 
 def get_sent_length(sent: str):
@@ -45,6 +51,7 @@ def preprocess_case(legal_case, return_length=False):
 
 def count_case(dataset):
     """count number of sentences in cases and sentence length"""
+    fig, axs = plt.subplots(2,1, figsize=(10, 6))
     for split in ["train", "validation", "test"]:
         split_dataset = dataset[split]
         sent_len = [] # record sentence Length
@@ -53,12 +60,30 @@ def count_case(dataset):
             sentences, len_list = preprocess_case(legal_case, True)
             sent_len.extend(len_list)
             sent_cnt.append(len(sentences))
-        # visualization TODO
+
         sent_len_counter = sorted(Counter(sent_len).most_common())
         sent_cnt_counter = sorted(Counter(sent_cnt).most_common())
+        # visualization
+        axs[0].hist([t[0] for t in sent_len_counter],
+                    weights = np.sqrt([t[1] for t in sent_len_counter]),
+                    bins = 100, density = True, alpha = 0.5,
+                    label = split, color = color_ref.get(split))
+        axs[1].hist([t[0] for t in sent_cnt_counter],
+                    weights = [t[1] for t in sent_cnt_counter],
+                    bins = 100, density = True, alpha = 0.5,
+                    label = split, color = color_ref.get(split))
 
+    axs[0].set_xlim(xmin=0, xmax=700)
+    axs[0].set_xlabel('Length', labelpad=-11, x=1.05)
+    axs[0].set_ylabel('sqrt{frequency}')
+    axs[0].legend(frameon=False)
+    axs[1].set_xlim(xmin=0, xmax=700)
+    axs[1].set_xlabel('Count', labelpad=-11, x=1.05)
+    axs[1].set_ylabel('frequency')
+    axs[1].legend(frameon=False)
+    plt.show()
+    fig.savefig("stat.svg", dpi=300, format="svg")
             
-
 def label2onehot(labels):
     label_tensor = torch.zeros(len(labels), 
                                NUM_LABELS, 
@@ -102,15 +127,9 @@ def record_and_save(dataset, vocab_size = VOCAB_SIZE):
 
 @torch.no_grad()
 def sent2graph(dataset, split):
-    vocab_table = torch.load("vocab_table.pt")
-    # TODO add edge and constant label
-    edge_table = {
-        ":ARG0" : 1,
-        ":ARG1" : 2,
-        ":ARG2" : 3,
-        ":ARG3" : 4,
-        "ARG1-of" : 5, 
-    } 
+    vocab_table = torch.load("data/vocab_table.pt")
+    with open("data/edge_table.json") as f:
+        edge_table = json.load(f)
 
     for split in ["train","validation", "test"]:
         split_dataset = dataset[split]
@@ -153,24 +172,32 @@ def sent2graph(dataset, split):
         # save to disk
         graph_dataset = {"x" : graph_x, "y" : graph_y}
         torch.save(graph_dataset, f"{split}_graph_dataset.pt")
-            
+
+@torch.no_grad()   
 def get_initial_embedding_weight():
     """get initial node embedding from bert using FLOTA"""
-    model = AutoModel.from_pretrained("bert-base-uncased", 
+    bert = AutoModel.from_pretrained("bert-base-uncased", 
                                       output_hidden_states=True)
     tokenizer = FlotaTokenizer("bert-base-uncased", k = 3)
     vocab_table = torch.load("vocab_table.pt")
 
-    initial_embedding = []
-    initial_embedding.append(torch.randn(768)) # "other" -> 0
+    initial_node_embedding = []
+    initial_node_embedding.append(torch.randn(768)) # "other" -> 0
     for vocab in vocab_table.keys():
         words = " ".join(vocab.split("-")[:-1])
         input = tokenizer(words, return_tensors="pt")
-        output = model(**input)
+        output = bert(**input)
         embedding_output = output[2][0]
         # average
         vocab_embedding = torch.mean(embedding_output[0][1:-1], dim=0)
-        initial_embedding.append(vocab_embedding)
+        initial_node_embedding.append(vocab_embedding)
     
-    initial_embedding = torch.stack(initial_embedding, dim=0)
-    torch.save(initial_embedding, "initial_embedding.pt")
+    initial_node_embedding = torch.stack(initial_node_embedding, dim=0)
+    torch.save(initial_node_embedding, "data/initial_node_embedding.pt")
+    torch.save(bert.embeddings.position_embeddings.weight, "data/initial_pos_embedding.pt" )
+    
+def main():
+    pass
+
+if __name__ == "__main__":
+    main()
