@@ -15,7 +15,7 @@ from transformers import AutoModel
 from data.flota import FlotaTokenizer
 
 MIN_LEN = 5
-MAX_LEN = 500
+MAX_LEN = 100
 NUM_LABELS = 10 # from ecthr dataset
 VOCAB_SIZE = 5000
 
@@ -49,6 +49,7 @@ def preprocess_case(legal_case, return_length=False):
     else:
         return sentences
 
+@torch.no_grad()
 def count_case(dataset):
     """count number of sentences in cases and sentence length"""
     fig, axs = plt.subplots(2,1, figsize=(10, 6))
@@ -194,7 +195,7 @@ def get_initial_embedding_weight():
     
     initial_node_embedding = torch.stack(initial_node_embedding, dim=0)
     torch.save(initial_node_embedding, "data/initial_node_embedding.pt")
-    torch.save(bert.embeddings.position_embeddings.weight, "data/initial_pos_embedding.pt" )
+    # torch.save(bert.embeddings.position_embeddings.weight, "data/initial_pos_embedding.pt" )
     
 def main():
     pass
