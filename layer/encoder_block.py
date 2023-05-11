@@ -20,6 +20,7 @@ class Encoder(nn.Module):
         mask = bg.ndata["top"]
         top_feat = bg.ndata["node_feat"][mask == 1]
         top_feat = torch.unsqueeze(top_feat, dim=0) # fit transformer
-        top_feat = self.cross_segment_encoder(top_feat) 
+        top_feat = self.cross_segment_encoder(top_feat)[0]
+        top_feat = torch.squeeze(top_feat)
         bg.ndata["node_feat"][mask == 1] = top_feat # update top features
-        return bg
+        return bg, top_feat
