@@ -15,6 +15,7 @@ class Net(nn.Module):
                                    nn.Linear(out_dim//6, 10))
 
     def forward(self, gs):
+        # TODO
         """input: a list DGLGraphs"""
         bg = dgl.batch(gs)
         bg = self.embedding(bg)

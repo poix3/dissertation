@@ -203,7 +203,7 @@ def get_initial_embedding_weight():
     initial_node_embedding.append(torch.randn(768)) # "other" -> 0
     for word in vocab_table.keys():
         word = process_word(word)
-        input = tokenizer(word, return_tensors="pt")
+        input = tokenizer(word)
         output = bert(**input)
         embedding_output = output[2][0]
         # average
