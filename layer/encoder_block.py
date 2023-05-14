@@ -1,7 +1,7 @@
 import dgl
 import torch
 import torch.nn as nn
-from torch.nn.utils.rnn import pad_sequence, 
+from torch.nn.utils.rnn import pad_sequence
 from transformers import BertModel
 from layer.graphTransformer_layer import GraphTransformerLayer
 
