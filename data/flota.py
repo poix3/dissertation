@@ -12,7 +12,7 @@ class FlotaTokenizer:
         self.strict = strict
         self.mode = mode
         self.tok = AutoTokenizer.from_pretrained(model, model_max_length=512)
-        with open('vocabs/{}.p'.format(model), 'rb') as f:
+        with open('data/{}.p'.format(model), 'rb') as f:
             self.vocab = pickle.load(f)
         assert len(self.vocab) == self.tok.vocab_size
         if self.model == 'bert-base-cased' or self.model == 'bert-base-uncased':
