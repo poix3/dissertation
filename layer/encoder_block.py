@@ -63,4 +63,4 @@ class Encoder(nn.Module):
             bg.ndata["node_feat"][top_mask == 1] = top_feat
 
         bbg = dgl.batch(bgs)
-        return bbg, node_split, edge_split, batched_top_feat # return batched_top_feat for head classification
+        return bbg, batched_top_feat # return batched_top_feat for head classification

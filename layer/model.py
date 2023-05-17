@@ -14,14 +14,17 @@ class Net(nn.Module):
                                    nn.Tanh(),
                                    nn.Linear(out_dim//6, 10))
 
-    def forward(self, gs):
-        # TODO
-        """input: a list DGLGraphs"""
-        bg = dgl.batch(gs)
-        bg = self.embedding(bg)
+    def forward(self, bg_list):
+        """input: a list batched DGLGraphs"""
+        # record information for unbatch operation
+        node_split = torch.tensor([bg.num_nodes() for bg in bg_list])
+        edge_split = torch.tensor([bg.num_edges() for bg in bg_list])
+
+        bg_list = [self.embedding(bg) for bg in bg_list]
+        bbg = dgl.batch(bg_list)
         for layer in self.encoder:
-            bg, cse_out = layer(bg)
+            bbg, cse_out = layer(bbg, node_split, edge_split)
         
-        pooled = torch.max(cse_out, dim=0).values
+        pooled = torch.max(cse_out, dim=1).values
         logits = self.max_pooling_proj(pooled)
         return logits
