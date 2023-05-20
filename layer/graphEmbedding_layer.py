@@ -7,6 +7,7 @@ class GraphEmbedding(nn.Module):
         self.node_embed = nn.Embedding.from_pretrained(torch.load("data/initial_node_embedding.pt"))
         self.edge_embed = nn.Embedding(num_e_labels, e_dim) # randomly initialized
         self.pos_embed = nn.Embedding.from_pretrained("data/initial_pos_embedding.pt")
+        self.layer_norm = nn.LayerNorm(hidden_size)
         self.dropout = nn.Dropout(hidden_dropout_prob)
 
     def forward(self, bg):
@@ -21,5 +22,7 @@ class GraphEmbedding(nn.Module):
         bg.ndata["node_feat"] = self.dropout(node_feat)
         # EDGE
         edge_feat = self.edge_embed(bg.edata["edge_ids"])
+        # layer norm
+        edge_feat = self.layer_norm(edge_feat)
         bg.edata["edge_feat"] = self.dropout(edge_feat)
         return bg
