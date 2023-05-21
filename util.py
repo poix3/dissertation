@@ -96,7 +96,7 @@ def count_case(dataset):
 def label2onehot(labels):
     label_tensor = torch.zeros(len(labels), 
                                NUM_LABELS, 
-                               dtype=torch.long)
+                               dtype=torch.float)
     for i, label in enumerate(labels):
         if label:
             label_tensor[i, torch.tensor(label)] = 1

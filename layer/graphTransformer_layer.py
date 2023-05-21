@@ -27,7 +27,7 @@ class GraphAttentionLayer(nn.Module):
                       {"score": torch.exp((edges.data["score"].sum(-1, keepdim=True)).clamp(-5, 5))})
         eids = g.edges()
         g.send_and_recv(eids, fn.u_mul_e('V', 'score', 'V'), fn.sum('V', 'wV'))
-        g.send_and_recv(eids, fn.copy_edge('score', 'score'), fn.sum('score', 'z'))
+        g.send_and_recv(eids, fn.copy_e('score', 'score'), fn.sum('score', 'z'))
         
     def forward(self, g, h, e):
         # linear transformation
@@ -48,7 +48,7 @@ class GraphAttentionLayer(nn.Module):
         return h_out, e_out
     
 class GraphTransformerLayer(nn.Module):
-    def __init__(self, in_dim, out_dim, num_heads, dropout=0.1):
+    def __init__(self, in_dim=768, out_dim=768, num_heads=4, dropout=0.1):
         super().__init__()
 
         self.in_channels = in_dim

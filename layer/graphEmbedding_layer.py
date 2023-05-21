@@ -6,7 +6,7 @@ class GraphEmbedding(nn.Module):
         super().__init__()
         self.node_embed = nn.Embedding.from_pretrained(torch.load("data/initial_node_embedding.pt"))
         self.edge_embed = nn.Embedding(num_e_labels, e_dim) # randomly initialized
-        self.pos_embed = nn.Embedding.from_pretrained("data/initial_pos_embedding.pt")
+        self.pos_embed = nn.Embedding.from_pretrained(torch.load("data/initial_pos_embedding.pt"))
         self.layer_norm = nn.LayerNorm(hidden_size)
         self.dropout = nn.Dropout(hidden_dropout_prob)
 
