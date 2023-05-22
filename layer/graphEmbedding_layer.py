@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 class GraphEmbedding(nn.Module):
     def __init__(self, num_e_labels, e_dim, hidden_size=768, hidden_dropout_prob=0.1):
         super().__init__()
@@ -15,7 +17,7 @@ class GraphEmbedding(nn.Module):
         node_feat = self.node_embed(bg.ndata["node_ids"])
         top_mask = bg.ndata["top_mask"]
         top_feat = node_feat[top_mask == 1] # dim: [num_top_nodes, feat_dim]
-        position_ids = torch.arange(top_feat.shape[0])
+        position_ids = torch.arange(top_feat.shape[0], device=DEVICE)
         # add position embedding to top nodes
         top_feat = top_feat + self.pos_embed(position_ids)
         node_feat[top_mask == 1] = top_feat
