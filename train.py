@@ -18,7 +18,7 @@ def parse_args():
     parser.add_argument("--num_epoch", default=None, type=int,
                         help="Max number of training epochs to perform.")
     parser.add_argument("--layout", default=None, type=str, 
-                        help="i, lc, intra, inter")
+                        help="i, ec, lc, ah")
     parser.add_argument("--batch_size", default=None, type=int, 
                         help="batch size")
     parser.add_argument("--lr", default=1e-5, type=float, 
@@ -31,7 +31,7 @@ def apply_threshold(logits, threshold=0.5):
     return logits
 
 @torch.no_grad()
-def evaluate(model, dataloader, criterion, mode):
+def evaluate(model, dataloader, criterion, mode, args):
     model.eval()
     all_logits, all_labels = [], []
     all_loss = []
@@ -50,12 +50,13 @@ def evaluate(model, dataloader, criterion, mode):
     loss = np.mean(all_loss)
     if mode == "validation":
         wandb.log({"micro_f1": micro_f1, "loss": loss})
+        return micro_f1
     elif mode == "testing":
         # results on each class
         each_f1 = f1_score(all_labels, all_pred, average=None)
-        np.save("data/each_class-f1", each_f1)
+        np.save(f"data/{args.layout}-each-class-f1", each_f1)
         # gender fairness
-        
+        torch.save(all_pred, f"data/{args.layout}-prediction.pt")
         print(f"micro f1 score: {micro_f1}, loss: {loss}")
     else:
         raise ValueError("Invalid mode.")
@@ -68,11 +69,12 @@ def graph_collate_fn(batch):
 def main():
     args = parse_args()
     wandb.init(
-    project = "legal judgment prediction",
-    config = {
-        "learning_rate": args.lr,
-        "dataset": "ECtHR",
-        "epochs": args.num_epoch,
+        project = "legal judgment prediction",
+        config = {
+            "architecture": args.layout,
+            "learning_rate": args.lr,
+            "dataset": "ECtHR",
+            "epochs": args.num_epoch,
     })
 
     model = Net(args.layout).to(DEVICE)
@@ -85,6 +87,7 @@ def main():
                                   batch_size=args.batch_size, 
                                   shuffle=True,
                                   collate_fn=graph_collate_fn)
+    best_micro_f1 = 0
     for _ in range(args.num_epoch):
         # training
         model.train()
@@ -98,13 +101,17 @@ def main():
         val_dataloader = DataLoader(val_dataset,
                             batch_size=args.batch_size, 
                             collate_fn=graph_collate_fn)
-        evaluate(model, val_dataloader, criterion, "validation") 
+        micro_f1 = evaluate(model, val_dataloader, criterion, "validation", args)
+        if micro_f1 > best_micro_f1:
+            best_micro_f1 = micro_f1
+            torch.save(model.state_dict(), f"{args.layout}-best-model-parameters.pt")
     # testing
+    model.load_state_dict(torch.load(f"{args.layout}-best-model-parameters.pt"))
     test_dataset = LegalDataset("test")
     test_dataloader = DataLoader(test_dataset,
                                  batch_size=args.batch_size, 
                                  collate_fn=graph_collate_fn)
-    evaluate(model, test_dataloader, criterion, "testing") 
+    evaluate(model, test_dataloader, criterion, "testing", args) 
     
 
 if __name__ == '__main__':
