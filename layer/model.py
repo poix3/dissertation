@@ -22,12 +22,22 @@ class Net(nn.Module):
     def get_encoder(self):
         if self.layout == "i":
             return Interleave()
+        elif self.layout == "i_lg":
+            return Interleave_lg()
         elif self.layout == "ec":
             return EarlyContextualization()
         elif self.layout == "lc":
             return LateContextualization()
+        elif self.layout == "lc_sm":
+            return LateContextualization_sm()
+        elif self.layout == "lc_lg_e":
+            return LateContextualization_lg_e()
+        elif self.layout == "lc_lg_l":
+            return LateContextualization_lg_l()
         elif self.layout == "ah":
             return AH()
+        elif self.layout == "ah_lg":
+            return AH_lg()
         else:
             raise ValueError("Invalid layout option.")
 
@@ -97,6 +107,36 @@ class Interleave(nn.Module):
         bbg, cse_out = self.cross_segment_encoders[3](bbg, attention_mask, node_split, edge_split)
         return cse_out
 
+class Interleave_lg(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.bert_layers = [2,5,8,11]
+        self.graph_transformers = nn.ModuleList([GraphTransformerLayer() for _ in range(16)])
+        self.cross_segment_encoders = nn.ModuleList([CrossSegmentEncoderLayer(id) for id in self.bert_layers])
+
+    def forward(self, bbg, attention_mask, node_split, edge_split):
+        bbg = self.graph_transformers[0](bbg)
+        bbg = self.graph_transformers[1](bbg)
+        bbg = self.graph_transformers[2](bbg)
+        bbg = self.graph_transformers[3](bbg)
+        bbg, cse_out = self.cross_segment_encoders[0](bbg, attention_mask, node_split, edge_split)
+        bbg = self.graph_transformers[4](bbg)
+        bbg = self.graph_transformers[5](bbg)
+        bbg = self.graph_transformers[6](bbg)
+        bbg = self.graph_transformers[7](bbg)
+        bbg, cse_out = self.cross_segment_encoders[1](bbg, attention_mask, node_split, edge_split)
+        bbg = self.graph_transformers[8](bbg)
+        bbg = self.graph_transformers[9](bbg)
+        bbg = self.graph_transformers[10](bbg)
+        bbg = self.graph_transformers[11](bbg)
+        bbg, cse_out = self.cross_segment_encoders[2](bbg, attention_mask, node_split, edge_split)
+        bbg = self.graph_transformers[12](bbg)
+        bbg = self.graph_transformers[13](bbg)
+        bbg = self.graph_transformers[14](bbg)
+        bbg = self.graph_transformers[15](bbg)
+        bbg, cse_out = self.cross_segment_encoders[3](bbg, attention_mask, node_split, edge_split)
+        return cse_out
+
 class EarlyContextualization(nn.Module):
     def __init__(self):
         super().__init__()
@@ -141,6 +181,74 @@ class LateContextualization(nn.Module):
         bbg, cse_out = self.cross_segment_encoders[3](bbg, attention_mask, node_split, edge_split)
         return cse_out
 
+class LateContextualization_sm(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.bert_layers = [7,11]
+        self.graph_transformers = nn.ModuleList([GraphTransformerLayer() for _ in range(6)])
+        self.cross_segment_encoders = nn.ModuleList([CrossSegmentEncoderLayer(id) for id in self.bert_layers])
+    
+    def forward(self, bbg, attention_mask, node_split, edge_split):
+        bbg = self.graph_transformers[0](bbg)
+        bbg = self.graph_transformers[1](bbg)
+        bbg = self.graph_transformers[2](bbg)
+        bbg = self.graph_transformers[3](bbg)
+        bbg = self.graph_transformers[4](bbg)
+        bbg, cse_out = self.cross_segment_encoders[0](bbg, attention_mask, node_split, edge_split)
+        bbg = self.graph_transformers[5](bbg)
+        bbg, cse_out = self.cross_segment_encoders[1](bbg, attention_mask, node_split, edge_split)
+        return cse_out
+
+class LateContextualization_lg_e(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.bert_layers = [5,7,9,11]
+        self.graph_transformers = nn.ModuleList([GraphTransformerLayer() for _ in range(11)])
+        self.cross_segment_encoders = nn.ModuleList([CrossSegmentEncoderLayer(id) for id in self.bert_layers])
+    
+    def forward(self, bbg, attention_mask, node_split, edge_split):
+        bbg = self.graph_transformers[0](bbg)
+        bbg = self.graph_transformers[1](bbg)
+        bbg = self.graph_transformers[2](bbg)
+        bbg = self.graph_transformers[3](bbg)
+        bbg = self.graph_transformers[4](bbg)
+        bbg = self.graph_transformers[5](bbg)
+        bbg = self.graph_transformers[6](bbg)
+        bbg = self.graph_transformers[7](bbg)
+        bbg, cse_out = self.cross_segment_encoders[0](bbg, attention_mask, node_split, edge_split)
+        bbg = self.graph_transformers[8](bbg)
+        bbg, cse_out = self.cross_segment_encoders[1](bbg, attention_mask, node_split, edge_split)
+        bbg = self.graph_transformers[9](bbg)
+        bbg, cse_out = self.cross_segment_encoders[2](bbg, attention_mask, node_split, edge_split)
+        bbg = self.graph_transformers[10](bbg)
+        bbg, cse_out = self.cross_segment_encoders[3](bbg, attention_mask, node_split, edge_split)
+        return cse_out
+
+class LateContextualization_lg_l(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.bert_layers = [5,7,9,11]
+        self.graph_transformers = nn.ModuleList([GraphTransformerLayer() for _ in range(11)])
+        self.cross_segment_encoders = nn.ModuleList([CrossSegmentEncoderLayer(id) for id in self.bert_layers])
+    
+    def forward(self, bbg, attention_mask, node_split, edge_split):
+        bbg = self.graph_transformers[0](bbg)
+        bbg = self.graph_transformers[1](bbg)
+        bbg = self.graph_transformers[2](bbg)
+        bbg = self.graph_transformers[3](bbg)
+        bbg = self.graph_transformers[4](bbg)
+        bbg, cse_out = self.cross_segment_encoders[0](bbg, attention_mask, node_split, edge_split)
+        bbg = self.graph_transformers[5](bbg)
+        bbg = self.graph_transformers[6](bbg)
+        bbg, cse_out = self.cross_segment_encoders[1](bbg, attention_mask, node_split, edge_split)
+        bbg = self.graph_transformers[7](bbg)
+        bbg = self.graph_transformers[8](bbg)
+        bbg, cse_out = self.cross_segment_encoders[2](bbg, attention_mask, node_split, edge_split)
+        bbg = self.graph_transformers[9](bbg)
+        bbg = self.graph_transformers[10](bbg)
+        bbg, cse_out = self.cross_segment_encoders[3](bbg, attention_mask, node_split, edge_split)
+        return cse_out
+
 class AH(nn.Module):
     def __init__(self):
         super().__init__()
@@ -157,6 +265,36 @@ class AH(nn.Module):
         bbg = self.graph_transformers[5](bbg)
         bbg = self.graph_transformers[6](bbg)
         bbg = self.graph_transformers[7](bbg)
+        bbg, cse_out = self.cross_segment_encoders[0](bbg, attention_mask, node_split, edge_split)
+        bbg, cse_out = self.cross_segment_encoders[1](bbg, attention_mask, node_split, edge_split)
+        bbg, cse_out = self.cross_segment_encoders[2](bbg, attention_mask, node_split, edge_split)
+        bbg, cse_out = self.cross_segment_encoders[3](bbg, attention_mask, node_split, edge_split)
+        return cse_out
+    
+class AH_lg(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.bert_layers = [8,9,10,11]
+        self.graph_transformers = nn.ModuleList([GraphTransformerLayer() for _ in range(16)])
+        self.cross_segment_encoders = nn.ModuleList([CrossSegmentEncoderLayer(id) for id in self.bert_layers])
+    
+    def forward(self, bbg, attention_mask, node_split, edge_split):
+        bbg = self.graph_transformers[0](bbg)
+        bbg = self.graph_transformers[1](bbg)
+        bbg = self.graph_transformers[2](bbg)
+        bbg = self.graph_transformers[3](bbg)
+        bbg = self.graph_transformers[4](bbg)
+        bbg = self.graph_transformers[5](bbg)
+        bbg = self.graph_transformers[6](bbg)
+        bbg = self.graph_transformers[7](bbg)
+        bbg = self.graph_transformers[8](bbg)
+        bbg = self.graph_transformers[9](bbg)
+        bbg = self.graph_transformers[10](bbg)
+        bbg = self.graph_transformers[11](bbg)
+        bbg = self.graph_transformers[12](bbg)
+        bbg = self.graph_transformers[13](bbg)
+        bbg = self.graph_transformers[14](bbg)
+        bbg = self.graph_transformers[15](bbg)
         bbg, cse_out = self.cross_segment_encoders[0](bbg, attention_mask, node_split, edge_split)
         bbg, cse_out = self.cross_segment_encoders[1](bbg, attention_mask, node_split, edge_split)
         bbg, cse_out = self.cross_segment_encoders[2](bbg, attention_mask, node_split, edge_split)

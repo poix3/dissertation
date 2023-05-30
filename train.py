@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
 import argparse
 import numpy as np
 import wandb
@@ -46,18 +46,21 @@ def evaluate(model, dataloader, criterion, mode, args):
     all_logits = torch.cat(all_logits, dim=0)
     all_pred = apply_threshold(all_logits)
     all_labels = torch.cat(all_labels, dim=0)
+
     micro_f1 = f1_score(all_labels, all_pred, average="micro")
+    accuracy = accuracy_score(all_labels, all_pred)
+    roc_auc = roc_auc_score(all_labels, all_pred, average="micro")
     loss = np.mean(all_loss)
+
     if mode == "validation":
-        wandb.log({"micro_f1": micro_f1, "loss": loss})
-        return micro_f1
+        return micro_f1, loss
     elif mode == "testing":
         # results on each class
         each_f1 = f1_score(all_labels, all_pred, average=None)
         np.save(f"data/{args.layout}-each-class-f1", each_f1)
         # gender fairness
         torch.save(all_pred, f"data/{args.layout}-prediction.pt")
-        print(f"micro f1 score: {micro_f1}, loss: {loss}")
+        print(f"micro f1 score: {micro_f1}, loss: {loss}, roc_auc:{roc_auc}, accuracy:{accuracy}")
     else:
         raise ValueError("Invalid mode.")
 
@@ -66,8 +69,12 @@ def graph_collate_fn(batch):
     labels = torch.stack([b[1] for b in batch], dim=0)
     return graphs, labels
 
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
 def main():
     args = parse_args()
+    torch.manual_seed(0)
     wandb.init(
         project = "legal judgment prediction",
         config = {
@@ -78,6 +85,7 @@ def main():
     })
 
     model = Net(args.layout).to(DEVICE)
+    print(f"{args.layout} Params: {count_parameters(model)}")
     criterion = nn.BCEWithLogitsLoss()
     optim = torch.optim.AdamW(model.parameters(), args.lr)
 
@@ -91,17 +99,22 @@ def main():
     for _ in range(args.num_epoch):
         # training
         model.train()
+        train_loss = []
         for graphs, labels in train_dataloader:
             optim.zero_grad()
-            logits = model(graphs)
+            logits = model(graphs).to("cpu")
             loss = criterion(logits, labels.float())
+            train_loss.append(loss.item())
             loss.backward()
             optim.step()
+        
+        train_loss = np.average(train_loss)
         # evaluation
         val_dataloader = DataLoader(val_dataset,
                             batch_size=args.batch_size, 
                             collate_fn=graph_collate_fn)
-        micro_f1 = evaluate(model, val_dataloader, criterion, "validation", args)
+        micro_f1, val_loss = evaluate(model, val_dataloader, criterion, "validation", args)
+        wandb.log({"train_loss": train_loss, "val_micro_f1": micro_f1, "val_loss": val_loss})
         if micro_f1 > best_micro_f1:
             best_micro_f1 = micro_f1
             torch.save(model.state_dict(), f"{args.layout}-best-model-parameters.pt")
